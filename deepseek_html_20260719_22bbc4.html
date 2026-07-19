@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>💰 BTC Checker - Lebih Serem</title>
+    <style>
+        /* ----- RESET & GLOBAL ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a0f;
+            overflow: hidden;
+            transition: background 0.3s;
+        }
+
+        /* ----- BACKGROUND GRID ----- */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 255, 200, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 200, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ----- STATIC NOISE OVERLAY (SEREM) ----- */
+        #noiseOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJmIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc0IiBudW1PY3RhdmVzPSIzIiAvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNmKSIgb3BhY2l0eT0iMC4wNSIgLz48L3N2Zz4=');
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            mix-blend-mode: overlay;
+        }
+
+        #noiseOverlay.active {
+            opacity: 1;
+        }
+
+        /* ----- FLASH OVERLAY (MERAH / HIJAU) ----- */
+        #flashOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.05s;
+        }
+
+        #flashOverlay.flash-red {
+            background: rgba(255, 0, 0, 0.4);
+            opacity: 1;
+            animation: flashBang 0.15s ease 3;
+        }
+
+        #flashOverlay.flash-green {
+            background: rgba(0, 255, 100, 0.3);
+            opacity: 1;
+            animation: flashBang 0.1s ease 4;
+        }
+
+        @keyframes flashBang {
+            0% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+
+        /* ----- SHAKE ANIMATION (SEREM) ----- */
+        .shake-global {
+            animation: shakeHard 0.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes shakeHard {
+            0% {
+                transform: translate(-8px, -6px) rotate(-1deg);
+            }
+            25% {
+                transform: translate(8px, 4px) rotate(1deg);
+            }
+            50% {
+                transform: translate(-5px, 8px) rotate(-1.5deg);
+            }
+            75% {
+                transform: translate(6px, -4px) rotate(1.2deg);
+            }
+            100% {
+                transform: translate(-7px, 5px) rotate(-0.8deg);
+            }
+        }
+
+        /* ----- MAIN CONTAINER (AWAL) ----- */
+        .container {
+            position: relative;
+            z-index: 10;
+            background: rgba(10, 10, 20, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 200, 0.15);
+            border-radius: 24px;
+            padding: 50px 40px 45px;
+            width: 460px;
+            max-width: 94%;
+            box-shadow: 0 0 60px rgba(0, 255, 200, 0.05), inset 0 0 60px rgba(0, 255, 200, 0.02);
+            text-align: center;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .container.closed {
+            opacity: 0;
+            transform: scale(0.85) translateY(30px);
+            pointer-events: none;
+            filter: blur(10px);
+        }
+
+        .btc-icon {
+            font-size: 52px;
+            display: block;
+            margin-bottom: 10px;
+            animation: pulse-icon 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-icon {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            50% {
+                transform: scale(1.08);
+                opacity: 1;
+            }
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #d0f0ec;
+            margin-bottom: 6px;
+            text-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
+        }
+
+        .sub {
+            font-size: 13px;
+            color: rgba(150, 200, 200, 0.5);
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .input-group label {
+            font-size: 14px;
+            color: rgba(180, 220, 220, 0.7);
+            letter-spacing: 0.5px;
+            text-align: left;
+            padding-left: 4px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .input-row input {
+            flex: 1;
+            padding: 14px 18px;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            background: rgba(0, 20, 20, 0.6);
+            border: 1.5px solid rgba(0, 255, 200, 0.2);
+            border-radius: 14px;
+            color: #b0f0ea;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            text-align: center;
+        }
+
+        .input-row input:focus {
+            border-color: rgba(0, 255, 200, 0.6);
+            box-shadow: 0 0 30px rgba(0, 255, 200, 0.06);
+        }
+
+        .input-row input.error {
+            border-color: rgba(255, 0, 0, 0.7);
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.2);
+        }
+
+        .btn-check {
+            padding: 14px 28px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            background: linear-gradient(135deg, rgba(0, 255, 200, 0.12), rgba(0, 200, 255, 0.05));
+            border: 1.5px solid rgba(0, 255, 200, 0.3);
+            border-radius: 14px;
+            color: #b0f0ea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            min-width: 120px;
+        }
+
+        .btn-check:hover {
+            background: rgba(0, 255, 200, 0.12);
+            border-color: rgba(0, 255, 200, 0.6);
+            box-shadow: 0 0 40px rgba(0, 255, 200, 0.06);
+            transform: translateY(-1px);
+        }
+
+        .btn-check:active {
+            transform: scale(0.97);
+        }
+
+        /* =========================================================
+               HACK MESSAGE (SAAT BERHASIL 5)
+            ========================================================= */
+        .hack-message {
+            display: none;
+            margin-top: 28px;
+            padding: 20px 16px;
+            border-radius: 16px;
+            background: rgba(255, 20, 20, 0.1);
+            border: 2px solid rgba(255, 0, 0, 0.4);
+            animation: hack-appear 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.2);
+        }
+
+        .hack-message.show {
+            display: block;
+        }
+
+        .hack-message .glitch {
+            font-size: 30px;
+            font-weight: 900;
+            color: #ff2a2a;
+            text-shadow:
+                0 0 10px rgba(255, 0, 0, 0.6),
+                0 0 40px rgba(255, 0, 0, 0.3),
+                3px 3px 0 #00ffcc,
+                -3px -3px 0 #ff00aa;
+            letter-spacing: 2px;
+            animation: glitch-text 0.8s infinite alternate;
+            line-height: 1.3;
+        }
+
+        .hack-message .sub-hack {
+            font-size: 13px;
+            color: rgba(255, 100, 100, 0.6);
+            margin-top: 10px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: blinkSub 1s step-end infinite;
+        }
+
+        @keyframes blinkSub {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .hack-message::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 3px,
+                    rgba(255, 0, 0, 0.05) 3px,
+                    rgba(255, 0, 0, 0.05) 4px);
+            pointer-events: none;
+            animation: scanlines 0.4s linear infinite;
+        }
+
+        @keyframes hack-appear {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) rotate(-5deg);
+            }
+            50% {
+                transform: scale(1.1) rotate(1deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0);
+            }
+        }
+
+        @keyframes glitch-text {
+            0% {
+                transform: skew(0deg) translateX(0);
+                text-shadow: 3px 3px 0 #00ffcc, -3px -3px 0 #ff00aa;
+            }
+            25% {
+                transform: skew(3deg) translateX(5px);
+                text-shadow: -4px 3px 0 #00ffcc, 4px -3px 0 #ff00aa;
+            }
+            50% {
+                transform: skew(-2deg) translateX(-4px);
+                text-shadow: 4px -4px 0 #00ffcc, -4px 4px 0 #ff00aa;
+            }
+            75% {
+                transform: skew(4deg) translateX(6px);
+                text-shadow: -5px 2px 0 #00ffcc, 5px -2px 0 #ff00aa;
+            }
+            100% {
+                transform: skew(-1deg) translateX(-2px);
+                text-shadow: 2px 5px 0 #00ffcc, -2px -5px 0 #ff00aa;
+            }
+        }
+
+        @keyframes scanlines {
+            0% {
+                background-position: 0 0;
+            }
+            100% {
+                background-position: 0 6px;
+            }
+        }
+
+        /* =========================================================
+               FAIL OVERLAY (KAU GAGAL) - LEBIH SEREM
+            ========================================================= */
+        #failOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            background: #0a0000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+            animation: failEnter 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+            border: 4px solid #ff0000;
+            box-shadow: inset 0 0 100px rgba(255, 0, 0, 0.2);
+        }
+
+        #failOverlay.show {
+            display: flex;
+        }
+
+        @keyframes failEnter {
+            0% {
+                clip-path: inset(0 0 100% 0);
+                opacity: 0;
+            }
+            100% {
+                clip-path: inset(0 0 0 0);
+                opacity: 1;
+            }
+        }
+
+        #failOverlay .skull {
+            font-size: 80px;
+            animation: skullPulse 1.2s ease-in-out infinite;
+            filter: drop-shadow(0 0 30px rgba(255, 0, 0, 0.5));
+        }
+
+        @keyframes skullPulse {
+            0%,
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                transform: scale(1.15) rotate(5deg);
+            }
+        }
+
+        #failOverlay .fail-text {
+            font-size: 56px;
+            font-weight: 900;
+            color: #ff1111;
+            text-shadow:
+                0 0 20px rgba(255, 0, 0, 0.8),
+                0 0 60px rgba(255, 0, 0, 0.4),
+                4px 4px 0 #000,
+                -4px -4px 0 #500;
+            letter-spacing: 8px;
+            animation: failGlitch 0.5s infinite alternate;
+            text-transform: uppercase;
+        }
+
+        @keyframes failGlitch {
+            0% {
+                transform: skew(0deg) translateX(0);
+                text-shadow: 4px 4px 0 #000, -4px -4px 0 #500, 0 0 40px red;
+            }
+            30% {
+                transform: skew(5deg) translateX(8px);
+                text-shadow: -4px 4px 0 #000, 4px -4px 0 #500, 0 0 60px #ff0040;
+            }
+            60% {
+                transform: skew(-3deg) translateX(-6px);
+                text-shadow: 4px -4px 0 #000, -4px 4px 0 #500, 0 0 50px #ff2200;
+            }
+            100% {
+                transform: skew(2deg) translateX(3px);
+                text-shadow: -2px 6px 0 #000, 2px -6px 0 #500, 0 0 70px #ff0033;
+            }
+        }
+
+        #failOverlay .fail-sub {
+            color: rgba(255, 80, 80, 0.3);
+            font-size: 14px;
+            letter-spacing: 6px;
+            margin-top: 10px;
+            animation: blinkSub 0.8s step-end infinite;
+            text-transform: uppercase;
+        }
+
+        #failOverlay .error-log {
+            margin-top: 20px;
+            color: rgba(255, 0, 0, 0.2);
+            font-size: 11px;
+            letter-spacing: 2px;
+            max-width: 300px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 0, 0, 0.1);
+            padding-top: 15px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* =========================================================
+               MATRIX RAIN CANVAS (SAAT HACK)
+            ========================================================= */
+        #matrixCanvas {
+            position: fixed;
+            inset: 0;
+            z-index: 15;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.8s;
+            display: none;
+        }
+
+        #matrixCanvas.active {
+            display: block;
+            opacity: 1;
+            pointer-events: none;
+        }
+
+        /* ----- RESPONSIVE ----- */
+        @media (max-width: 500px) {
+            .container {
+                padding: 32px 20px 30px;
+            }
+            h1 {
+                font-size: 18px;
+            }
+            .input-row input {
+                font-size: 17px;
+                padding: 12px 14px;
+            }
+            .btn-check {
+                font-size: 14px;
+                padding: 12px 18px;
+                min-width: 90px;
+            }
+            #failOverlay .fail-text {
+                font-size: 32px;
+                letter-spacing: 4px;
+            }
+            #failOverlay .skull {
+                font-size: 50px;
+            }
+            .hack-message .glitch {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .input-row {
+                flex-direction: column;
+            }
+            .btn-check {
+                width: 100%;
+            }
+        }
+
+        /* reset hint */
+        .reset-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            color: rgba(255, 255, 255, 0.08);
+            font-size: 11px;
+            letter-spacing: 2px;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(4px);
+        }
+        .reset-hint strong {
+            color: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LAYER EFEK SEREM -->
+    <div id="noiseOverlay"></div>
+    <div id="flashOverlay"></div>
+    <canvas id="matrixCanvas"></canvas>
+
+    <!-- FAIL OVERLAY (KAU GAGAL) -->
+    <div id="failOverlay">
+        <div class="skull">💀</div>
+        <div class="fail-text">kau gagal</div>
+        <div class="fail-sub">• sistem crash •</div>
+        <div class="error-log">[FATAL] akses ditolak &nbsp;|&nbsp; 0x00FF0011</div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="container" id="mainContainer">
+        <span class="btc-icon">₿</span>
+        <h1>BTC Checker</h1>
+        <p class="sub">masukkan jumlah Bitcoin</p>
+
+        <div class="input-group">
+            <label for="btcInput">Jumlah BTC</label>
+            <div class="input-row">
+                <input type="number" id="btcInput" placeholder="0" step="any" min="0" autofocus />
+                <button class="btn-check" id="checkBtn">Periksa</button>
+            </div>
+        </div>
+
+        <div class="hack-message" id="hackMessage">
+            <div class="glitch">⚠️ WKWKW PC LU KENA HACK!</div>
+            <div class="sub-hack">• sistem terinfeksi •</div>
+        </div>
+
+        <div style="margin-top: 22px; font-size: 11px; color: rgba(150,200,200,0.12); letter-spacing:1px;">
+            masukkan 5 untuk melihat efek
+        </div>
+    </div>
+
+    <div class="reset-hint">klik 2x pada layar atau tekan <strong>ESC</strong> untuk reset</div>
+
+    <script>
+        (function() {
+            // ----- DOM Elements -----
+            const container = document.getElementById('mainContainer');
+            const input = document.getElementById('btcInput');
+            const checkBtn = document.getElementById('checkBtn');
+            const hackMsg = document.getElementById('hackMessage');
+            const failOverlay = document.getElementById('failOverlay');
+            const flashOverlay = document.getElementById('flashOverlay');
+            const noiseOverlay = document.getElementById('noiseOverlay');
+            const matrixCanvas = document.getElementById('matrixCanvas');
+            const ctx = matrixCanvas.getContext('2d');
+
+            // ----- State -----
+            let matrixInterval = null;
+            let isActive = false; // untuk cegah spam
+
+            // ----- AUDIO (Serem pake Web Audio) -----
+            let audioCtx = null;
+
+            function playScarySound(type) {
+                try {
+                    if (!audioCtx) {
+                        audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                    }
+                    const now = audioCtx.currentTime;
+
+                    if (type === 'fail') {
+                        // Deep rumble + glitch burst
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(80, now);
+                        osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+                        gain.gain.setValueAtTime(0.3, now);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.5);
+
+                        // noise burst
+                        const bufferSize = audioCtx.sampleRate * 0.15;
+                        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                        const data = buffer.getChannelData(0);
+                        for (let i = 0; i < bufferSize; i++) {
+                            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / bufferSize * 5);
+                        }
+                        const noise = audioCtx.createBufferSource();
+                        noise.buffer = buffer;
+                        const ng = audioCtx.createGain();
+                        ng.gain.setValueAtTime(0.2, now);
+                        ng.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                        noise.connect(ng);
+                        ng.connect(audioCtx.destination);
+                        noise.start(now);
+                        noise.stop(now + 0.15);
+
+                    } else if (type === 'hack') {
+                        // Glitchy ascending tone
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(200, now);
+                        osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+                        gain.gain.setValueAtTime(0.15, now);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.25);
+                    }
+                } catch (e) { /* silent fail jika audio tidak didukung */ }
+            }
+
+            // ----- MATRIX RAIN EFFECT -----
+            function initMatrix() {
+                matrixCanvas.width = window.innerWidth;
+                matrixCanvas.height = window.innerHeight;
+                const columns = Math.floor(matrixCanvas.width / 18);
+                const drops = [];
+                for (let i = 0; i < columns; i++) {
+                    drops[i] = Math.random() * -100;
+                }
+
+                const chars = 'ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ0123456789ABCDEF';
+
+                function drawMatrix() {
+                    if (!matrixCanvas.classList.contains('active')) {
+                        ctx.clearRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                        return;
+                    }
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                    ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                    ctx.fillStyle = '#0f0';
+                    ctx.font = '18px monospace';
+                    ctx.shadowColor = '#0f0';
+                    ctx.shadowBlur = 6;
+
+                    for (let i = 0; i < drops.length; i++) {
+                        const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                        const x = i * 18;
+                        const y = drops[i] * 18;
+                        ctx.fillStyle = `rgba(0, 255, 50, ${0.5 + Math.random() * 0.5})`;
+                        ctx.fillText(text, x, y);
+
+                        if (y > matrixCanvas.height && Math.random() > 0.975) {
+                            drops[i] = 0;
+                        }
+                        drops[i] += 0.6 + Math.random() * 0.4;
+                    }
+                    requestAnimationFrame(drawMatrix);
+                }
+                drawMatrix();
+            }
+
+            function startMatrix() {
+                matrixCanvas.classList.add('active');
+                if (!matrixInterval) {
+                    initMatrix();
+                }
+            }
+
+            function stopMatrix() {
+                matrixCanvas.classList.remove('active');
+                ctx.clearRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                if (matrixInterval) {
+                    clearInterval(matrixInterval);
+                    matrixInterval = null;
+                }
+            }
+
+            // ----- HELPERS -----
+            function resetError() {
+                input.classList.remove('error');
+            }
+
+            function resetAllEffects() {
+                // Hapus semua efek
+                document.body.classList.remove('shake-global');
+                flashOverlay.className = '';
+                flashOverlay.style.opacity = '0';
+                noiseOverlay.classList.remove('active');
+                stopMatrix();
+                failOverlay.classList.remove('show');
+                failOverlay.style.display = 'none';
+                hackMsg.classList.remove('show');
+                container.classList.remove('closed');
+                container.style.display = '';
+                document.body.style.background = '#0a0a0f';
+                // matikan audio
+                if (audioCtx && audioCtx.state === 'running') {
+                    audioCtx.close().catch(() => {});
+                    audioCtx = null;
+                }
+                isActive = false;
+            }
+
+            // ----- RESET (double click / ESC) -----
+            function fullReset() {
+                resetAllEffects();
+                input.value = '';
+                input.classList.remove('error');
+                input.focus();
+            }
+
+            document.addEventListener('dblclick', fullReset);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') fullReset();
+            });
+
+            // ----- SHOW HACK (BERHASIL 5) -----
+            function showHack() {
+                if (isActive) return;
+                isActive = true;
+                resetAllEffects();
+
+                // Efek visual
+                document.body.classList.add('shake-global');
+                flashOverlay.className = 'flash-green';
+                setTimeout(() => { flashOverlay.className = ''; }, 600);
+                noiseOverlay.classList.add('active');
+                startMatrix();
+                hackMsg.classList.add('show');
+                container.classList.remove('closed');
+                container.style.display = '';
+                document.body.style.background = '#001100';
+
+                // Suara serem
+                playScarySound('hack');
+
+                // Hilangkan shake setelah beberapa detik biar gak terlalu pusing, tapi tetap ada efek
+                setTimeout(() => {
+                    document.body.classList.remove('shake-global');
+                }, 2000);
+
+                // reset state setelah 8 detik biar gak infinite (tapi tetap tampil)
+                setTimeout(() => {
+                    // biarkan efek tetap jalan sampai user reset manual
+                }, 100);
+            }
+
+            // ----- SHOW FAIL (KAU GAGAL) -----
+            function showFail() {
+                if (isActive) return;
+                isActive = true;
+                resetAllEffects();
+
+                // Efek visual
+                document.body.classList.add('shake-global');
+                flashOverlay.className = 'flash-red';
+                setTimeout(() => { flashOverlay.className = ''; }, 500);
+                noiseOverlay.classList.add('active');
+                document.body.style.background = '#1a0000';
+
+                // Tampilkan fail overlay
+                failOverlay.style.display = 'flex';
+                // Trigger reflow biar animasi jalan
+                void failOverlay.offsetWidth;
+                failOverlay.classList.add('show');
+
+                // Suara gagal (serem)
+                playScarySound('fail');
+
+                // Sembunyikan container utama
+                container.classList.add('closed');
+                setTimeout(() => {
+                    container.style.display = 'none';
+                }, 600);
+
+                // Hilangkan shake setelah 2 detik
+                setTimeout(() => {
+                    document.body.classList.remove('shake-global');
+                }, 2500);
+
+                // Matikan noise setelah 5 detik biar gak overload
+                setTimeout(() => {
+                    noiseOverlay.classList.remove('active');
+                }, 5000);
+            }
+
+            // ----- MAIN CHECK -----
+            function checkBTC() {
+                const raw = input.value.trim();
+                if (raw === '') {
+                    input.classList.add('error');
+                    return;
+                }
+                const num = parseFloat(raw);
+                if (isNaN(num) || num !== 5) {
+                    input.classList.add('error');
+                    showFail();
+                    return;
+                }
+                // exactly 5
+                showHack();
+            }
+
+            // ----- EVENT LISTENERS -----
+            checkBtn.addEventListener('click', checkBTC);
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    checkBTC();
+                }
+                if (input.classList.contains('error')) {
+                    input.classList.remove('error');
+                }
+            });
+
+            input.addEventListener('focus', resetError);
+            input.addEventListener('input', () => {
+                if (input.classList.contains('error')) {
+                    input.classList.remove('error');
+                }
+            });
+
+            // Resize matrix
+            window.addEventListener('resize', () => {
+                if (matrixCanvas.classList.contains('active')) {
+                    matrixCanvas.width = window.innerWidth;
+                    matrixCanvas.height = window.innerHeight;
+                    initMatrix(); // re-init drops
+                }
+            });
+
+            // Auto focus
+            setTimeout(() => input.focus(), 400);
+
+            // Sembunyikan fail overlay jika user klik (tapi tetap bisa reset via ESC/doubleclick)
+            failOverlay.addEventListener('click', (e) => {
+                // biar ga keblokir, tapi kita biarkan supaya user sadar harus double click atau ESC
+                // Tapi kita kasih hint di bawah.
+            });
+
+            console.log('🔥 BTC Checker - Mode Serem Aktif! Masukkan 5 untuk hack, selain itu gagal.');
+        })();
+    </script>
+
+</body>
+</html>
